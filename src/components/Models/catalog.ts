@@ -1,17 +1,28 @@
-import { Product } from '../../types';
-
+import { IProduct } from '../../types';
 
 export class Catalog {
-  protected productList: [Product] = [];
-  protected currentProduct: Product;
+  protected productList: IProduct[] = [];
+  protected currentProduct: IProduct | null = null;
 
-  constructor(baseUrl: string, options: RequestInit = {}) {
-      this.baseUrl = baseUrl;
-      this.options = {
-          headers: {
-              'Content-Type': 'application/json',
-              ...(options.headers as object ?? {})
-          }
-      };
+  constructor() {}
+
+  setProducts(products: IProduct[]): void {
+    this.productList = products;
+  }
+
+  getProducts(): IProduct[] {
+    return this.productList;
+  }
+
+  getProductById(id: string): IProduct | undefined {
+    return this.productList.find(product => product.id === id);
+  }
+
+  setCurrentProduct(product: IProduct): void {
+    this.currentProduct = product;
+  }
+
+  getCurrentProduct(): IProduct | null {
+    return this.currentProduct;
   }
 }

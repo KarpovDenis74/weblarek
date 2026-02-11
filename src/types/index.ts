@@ -9,16 +9,16 @@ export interface TPayment {
   name: 'card' |'cash' | ''
 }
 
-export interface Product {
+export interface IProduct {
   id: string;
   description: string;
   image: string;
   title: string;
   category: string;
   price: number | null;
-};
+}
 
-export interface Buyer {
+export interface IBuyer {
   payment: TPayment;
   email: string;
   phone: string;
