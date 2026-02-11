@@ -24,3 +24,16 @@ export interface IBuyer {
   phone: string;
   address: string;
 }
+
+export interface IProductsResponse {
+  total: number;
+  items: IProduct[];
+}
+
+export interface IOrderRequest {
+  payment: TPayment;
+  email: string;
+  phone: string;
+  address: string;
+  items: string[];
+}

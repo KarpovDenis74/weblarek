@@ -3,6 +3,9 @@ import { Catalog } from './components/Models/catalog';
 import { Basket } from './components/Models/basket';
 import { Buyer } from './components/Models/user';
 import { apiProducts } from './utils/data';
+import { Api } from './components/base/Api';
+import { ShopApi } from './components/ShopApi';
+import { API_URL } from './utils/constants';
 
 // Тестирование класса Catalog
 console.log('=== Тестирование класса Catalog ===');
@@ -84,3 +87,18 @@ buyerModel.setData({
 const finalValidationErrors = buyerModel.validate();
 console.log('Ошибки валидации (все поля заполнены корректно):', finalValidationErrors);
 console.log('Валидность данных (все поля заполнены):', Object.keys(finalValidationErrors).length === 0);
+// Работа с сервером
+console.log('\n=== Работа с сервером ===');
+const api = new Api(API_URL);
+const shopApi = new ShopApi(api);
+
+shopApi.getProducts()
+  .then((products) => {
+    console.log('Товары получены с сервера:', products);
+    catalogModel.setProducts(products);
+    console.log('Товары сохранены в модель каталога:', catalogModel.getProducts());
+    console.log('Количество товаров в каталоге после получения с сервера:', catalogModel.getProducts().length);
+  })
+  .catch((error) => {
+    console.error('Ошибка при получении товаров с сервера:', error);
+  });
