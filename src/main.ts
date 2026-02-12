@@ -1,11 +1,11 @@
-import './scss/styles.scss';
-import { Catalog } from './components/Models/catalog';
-import { Basket } from './components/Models/basket';
-import { Buyer } from './components/Models/user';
-import { apiProducts } from './utils/data';
 import { Api } from './components/base/Api';
+import { Basket } from './components/Models/basket';
+import { Catalog } from './components/Models/catalog';
+import { Buyer } from './components/Models/user';
 import { ShopApi } from './components/ShopApi';
+import './scss/styles.scss';
 import { API_URL } from './utils/constants';
+import { apiProducts } from './utils/data';
 
 // Тестирование класса Catalog
 console.log('=== Тестирование класса Catalog ===');
@@ -64,7 +64,7 @@ console.log('Данные покупателя после установки pho
 
 buyerModel.setData({
   address: 'Москва, ул. Примерная, д. 1',
-  payment: { name: 'card' }
+  payment: 'card'
 });
 console.log('Данные покупателя после установки address и payment:', buyerModel.getData());
 
@@ -82,7 +82,7 @@ buyerModel.setData({
   email: 'test@example.com',
   phone: '+7 999 123 45 67',
   address: 'Москва, ул. Примерная, д. 1',
-  payment: { name: 'cash' }
+  payment: 'cash'
 });
 const finalValidationErrors = buyerModel.validate();
 console.log('Ошибки валидации (все поля заполнены корректно):', finalValidationErrors);

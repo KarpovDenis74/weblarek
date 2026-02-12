@@ -1,7 +1,7 @@
-import { IBuyer, TPayment } from '../../types';
+import { BuyerError, IBuyer, TPayment } from '../../types';
 
 export class Buyer {
-  protected payment: TPayment = { name: '' };
+  protected payment: TPayment = '';
   protected address: string = '';
   protected phone: string = '';
   protected email: string = '';
@@ -33,28 +33,28 @@ export class Buyer {
   }
 
   clear(): void {
-    this.payment = { name: '' };
+    this.payment = '';
     this.address = '';
     this.phone = '';
     this.email = '';
   }
 
-  validate(): Partial<Record<keyof IBuyer, string>> {
-    const errors: Partial<Record<keyof IBuyer, string>> = {};
+  validate(): BuyerError {
+    const errors: BuyerError = {};
 
-    if (!this.payment.name || this.payment.name === '') {
+    if (!this.payment) {
       errors.payment = 'Не выбран вид оплаты';
     }
 
-    if (!this.address || this.address.trim() === '') {
+    if(!this.address?.trim()) {
       errors.address = 'Укажите адрес';
     }
 
-    if (!this.phone || this.phone.trim() === '') {
+    if (!this.phone?.trim()) {
       errors.phone = 'Укажите телефон';
     }
 
-    if (!this.email || this.email.trim() === '') {
+    if (!this.email?.trim()) {
       errors.email = 'Укажите емэйл';
     }
 

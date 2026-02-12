@@ -5,9 +5,7 @@ export interface IApi {
     post<T extends object>(uri: string, data: object, method?: ApiPostMethods): Promise<T>;
 }
 
-export interface TPayment {
-  name: 'card' |'cash' | ''
-}
+export type TPayment = 'card' | 'cash' | '';
 
 export interface IProduct {
   id: string;
@@ -37,3 +35,10 @@ export interface IOrderRequest {
   address: string;
   items: string[];
 }
+
+export interface IOrderResponse {
+  id: string;
+  total: number;
+}
+
+export type BuyerError = Partial<Record<keyof IBuyer, string>>;
