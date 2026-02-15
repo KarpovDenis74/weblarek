@@ -34,6 +34,7 @@ export interface IOrderRequest {
   phone: string;
   address: string;
   items: string[];
+  total: number;
 }
 
 export interface IOrderResponse {
