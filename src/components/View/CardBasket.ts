@@ -1,27 +1,22 @@
-import { Card } from './Card';
 import { IProduct } from '../../types';
+import { ensureElement } from '../../utils/utils';
 import { IEvents } from '../base/Events';
-import { cloneTemplate } from '../../utils/utils';
+import { Card } from './Card';
 
 export class CardBasket extends Card {
   protected _index: HTMLElement;
-  protected _title: HTMLElement;
-  protected _price: HTMLElement;
   protected _button: HTMLButtonElement;
-  private _product?: IProduct;
+  private _buttonClickHandler?: () => void;
 
-  constructor(container: HTMLElement, events?: IEvents) {
-    const element = cloneTemplate<HTMLLIElement>('#card-basket');
-    super(element, events);
+  constructor(container: HTMLElement, events: IEvents) {
+    super(container, events);
 
-    this._index = element.querySelector('.basket__item-index') as HTMLElement;
-    this._title = element.querySelector('.card__title') as HTMLElement;
-    this._price = element.querySelector('.card__price') as HTMLElement;
-    this._button = element.querySelector('.basket__item-delete') as HTMLButtonElement;
+    this._index = ensureElement<HTMLElement>('.basket__item-index', container);
+    this._button = ensureElement<HTMLButtonElement>('.basket__item-delete', container);
 
     this._button.addEventListener('click', () => {
-      if (this._product) {
-        this.events?.emit('card:remove', { product: this._product });
+      if (this._buttonClickHandler) {
+        this._buttonClickHandler();
       }
     });
   }
@@ -29,9 +24,14 @@ export class CardBasket extends Card {
   render(data?: Partial<IProduct & { index: number }>): HTMLElement {
     if (!data) return this.container;
 
-    this._product = data as IProduct;
+    const product = data as IProduct;
 
-    if (data.index !== undefined && this._index) {
+    // Создаем колбэк с данными продукта
+    this._buttonClickHandler = () => {
+      this.events.emit('card:remove', { product });
+    };
+
+    if (data.index !== undefined) {
       this._index.textContent = String(data.index);
     }
     if (data.title) this.setTitle(data.title);

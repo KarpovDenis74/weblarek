@@ -1,27 +1,16 @@
-import { Card } from './Card';
 import { IProduct } from '../../types';
 import { IEvents } from '../base/Events';
-import { cloneTemplate } from '../../utils/utils';
+import { CardWithImage } from './CardWithImage';
 
-export class CardCatalog extends Card {
-  protected _category: HTMLElement;
-  protected _title: HTMLElement;
-  protected _image: HTMLImageElement;
-  protected _price: HTMLElement;
-  private _product?: IProduct;
+export class CardCatalog extends CardWithImage {
+  private _clickHandler?: () => void;
 
-  constructor(container: HTMLElement, events?: IEvents) {
-    const element = cloneTemplate<HTMLButtonElement>('#card-catalog');
-    super(element, events);
+  constructor(container: HTMLElement, events: IEvents) {
+    super(container, events);
 
-    this._category = element.querySelector('.card__category') as HTMLElement;
-    this._title = element.querySelector('.card__title') as HTMLElement;
-    this._image = element.querySelector('.card__image') as HTMLImageElement;
-    this._price = element.querySelector('.card__price') as HTMLElement;
-
-    element.addEventListener('click', () => {
-      if (this._product) {
-        this.events?.emit('card:select', { product: this._product });
+    container.addEventListener('click', () => {
+      if (this._clickHandler) {
+        this._clickHandler();
       }
     });
   }
@@ -29,7 +18,12 @@ export class CardCatalog extends Card {
   render(data?: Partial<IProduct>): HTMLElement {
     if (!data) return this.container;
 
-    this._product = data as IProduct;
+    const product = data as IProduct;
+
+    // Создаем колбэк с данными продукта
+    this._clickHandler = () => {
+      this.events.emit('card:select', { product });
+    };
 
     if (data.category) this.setCategory(data.category);
     if (data.title) this.setTitle(data.title);

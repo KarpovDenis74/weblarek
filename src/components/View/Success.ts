@@ -1,29 +1,28 @@
 import { Component } from '../base/Component';
 import { IEvents } from '../base/Events';
-import { cloneTemplate } from '../../utils/utils';
+import { ensureElement } from '../../utils/utils';
 
 export class Success extends Component<{ total: number }> {
   protected _title: HTMLElement;
   protected _description: HTMLElement;
   protected _button: HTMLButtonElement;
-  protected events?: IEvents;
+  protected events: IEvents;
 
-  constructor(container: HTMLElement, events?: IEvents) {
-    const element = cloneTemplate<HTMLElement>('#success');
-    super(element);
+  constructor(container: HTMLElement, events: IEvents) {
+    super(container);
     this.events = events;
 
-    this._title = element.querySelector('.order-success__title') as HTMLElement;
-    this._description = element.querySelector('.order-success__description') as HTMLElement;
-    this._button = element.querySelector('.order-success__close') as HTMLButtonElement;
+    this._title = ensureElement<HTMLElement>('.order-success__title', container);
+    this._description = ensureElement<HTMLElement>('.order-success__description', container);
+    this._button = ensureElement<HTMLButtonElement>('.order-success__close', container);
 
     this._button.addEventListener('click', () => {
-      this.events?.emit('success:close');
+      this.events.emit('success:close');
     });
   }
 
   render(data?: Partial<{ total: number }>): HTMLElement {
-    if (data?.total !== undefined && this._description) {
+    if (data?.total !== undefined) {
       this._description.textContent = `Списано ${data.total} синапсов`;
     }
     return this.container;

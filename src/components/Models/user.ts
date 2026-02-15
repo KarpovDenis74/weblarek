@@ -1,12 +1,16 @@
 import { BuyerError, IBuyer, TPayment } from '../../types';
+import { IEvents } from '../base/Events';
 
 export class Buyer {
   protected payment: TPayment = '';
   protected address: string = '';
   protected phone: string = '';
   protected email: string = '';
+  protected events?: IEvents;
 
-  constructor() {}
+  constructor(events?: IEvents) {
+    this.events = events;
+  }
 
   setData(data: Partial<IBuyer>): void {
     if (data.payment !== undefined) {
@@ -21,6 +25,7 @@ export class Buyer {
     if (data.email !== undefined) {
       this.email = data.email;
     }
+    this.events?.emit('buyer:changed', {});
   }
 
   getData(): IBuyer {

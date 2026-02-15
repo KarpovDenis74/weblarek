@@ -1,59 +1,43 @@
-import { Component } from '../base/Component';
-import { IBuyer, TPayment } from '../../types';
+import { IBuyer } from '../../types';
+import { ensureAllElements, ensureElement } from '../../utils/utils';
 import { IEvents } from '../base/Events';
-import { cloneTemplate } from '../../utils/utils';
+import { Form } from './Form';
 
-export class OrderForm extends Component<IBuyer> {
-  protected _paymentButtons: NodeListOf<HTMLButtonElement>;
+export class OrderForm extends Form<IBuyer> {
+  protected _paymentButtons: HTMLButtonElement[];
   protected _addressInput: HTMLInputElement;
-  protected _submitButton: HTMLButtonElement;
-  protected _errors: HTMLElement;
-  protected events?: IEvents;
-  private _selectedPayment: TPayment = '';
 
-  constructor(container: HTMLElement, events?: IEvents) {
-    const element = cloneTemplate<HTMLFormElement>('#order');
-    super(element);
-    this.events = events;
+  constructor(container: HTMLElement, events: IEvents) {
+    super(container, events);
 
-    this._paymentButtons = element.querySelectorAll('.order__buttons button') as NodeListOf<HTMLButtonElement>;
-    this._addressInput = element.querySelector('input[name="address"]') as HTMLInputElement;
-    this._submitButton = element.querySelector('button[type="submit"]') as HTMLButtonElement;
-    this._errors = element.querySelector('.form__errors') as HTMLElement;
+    this._paymentButtons = ensureAllElements<HTMLButtonElement>('.order__buttons button', container);
+    this._addressInput = ensureElement<HTMLInputElement>('input[name="address"]', container);
 
     // Обработчики выбора способа оплаты
     this._paymentButtons.forEach((button) => {
       button.addEventListener('click', () => {
         const paymentName = button.name as 'card' | 'cash';
-        this.setPayment(paymentName);
-        this.validate();
+        this.events.emit('order:change', {
+          payment: paymentName
+        } as Partial<IBuyer>);
       });
     });
 
     // Обработчик изменения адреса
     this._addressInput.addEventListener('input', () => {
-      this.validate();
-      this.events?.emit('order:change', {
-        address: this._addressInput.value,
-        payment: this._selectedPayment
+      this.events.emit('order:change', {
+        address: this._addressInput.value
       } as Partial<IBuyer>);
     });
 
     // Обработчик отправки формы
-    element.addEventListener('submit', (e) => {
+    container.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (this.validate()) {
-        this.events?.emit('order:submit', {
-          payment: this._selectedPayment,
-          address: this._addressInput.value
-        } as Partial<IBuyer>);
-      }
+      this.events.emit('order:submit');
     });
   }
 
   setPayment(payment: 'card' | 'cash'): void {
-    this._selectedPayment = payment;
-
     // Обновляем визуальное состояние кнопок
     this._paymentButtons.forEach((button) => {
       if (button.name === payment) {
@@ -64,43 +48,14 @@ export class OrderForm extends Component<IBuyer> {
     });
   }
 
-  validate(): boolean {
-    const errors: string[] = [];
-
-    if (!this._selectedPayment || this._selectedPayment === '') {
-      errors.push('Не выбран способ оплаты');
-    }
-
-    if (!this._addressInput.value || this._addressInput.value.trim() === '') {
-      errors.push('Укажите адрес доставки');
-    }
-
-    // Отображаем ошибки
-    if (this._errors) {
-      if (errors.length > 0) {
-        this._errors.textContent = errors.join(', ');
-      } else {
-        this._errors.textContent = '';
-      }
-    }
-
-    // Активируем/деактивируем кнопку отправки
-    if (this._submitButton) {
-      this._submitButton.disabled = errors.length > 0;
-    }
-
-    return errors.length === 0;
-  }
-
   render(data?: Partial<IBuyer>): HTMLElement {
     if (data) {
       if (data.payment && (data.payment === 'card' || data.payment === 'cash')) {
         this.setPayment(data.payment);
       }
-      if (data.address && this._addressInput) {
+      if (data.address) {
         this._addressInput.value = data.address;
       }
-      this.validate();
     }
     return this.container;
   }

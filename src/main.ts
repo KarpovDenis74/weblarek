@@ -16,42 +16,40 @@ import { Success } from './components/View/Success';
 import './scss/styles.scss';
 import { IBuyer, IOrderRequest, IProduct } from './types';
 import { API_URL } from './utils/constants';
+import { cloneTemplate } from './utils/utils';
 
 
+// Инициализация событий
+const events = new EventEmitter();
+
+// Инициализация моделей данных
 const basketModel = new BasketModel();
+const buyerModel = new Buyer(events);
+const catalogModel = new Catalog(events);
 
-
-
-// Тестирование класса Buyer
-
-const buyerModel = new Buyer();
-
-
+// Инициализация API
 const api = new Api(API_URL);
 const shopApi = new ShopApi(api);
-
-// Инициализация компонентов
-const events = new EventEmitter();
-const catalogModel = new Catalog(events);
 const page = new Page(document.body);
 const modal = new Modal(document.querySelector('#modal-container') as HTMLElement);
 const header = new Header(document.querySelector('.header') as HTMLElement, events);
 
 // Создание компонентов представления (кроме карточек)
-const basketView = new BasketView(document.createElement('div'), events);
-const orderForm = new OrderForm(document.createElement('form'), events);
-const contactsForm = new ContactsForm(document.createElement('form'), events);
-const successView = new Success(document.createElement('div'), events);
+const basketView = new BasketView(cloneTemplate<HTMLElement>('#basket'), events);
+const orderForm = new OrderForm(cloneTemplate<HTMLFormElement>('#order'), events);
+const contactsForm = new ContactsForm(cloneTemplate<HTMLFormElement>('#contacts'), events);
+const successView = new Success(cloneTemplate<HTMLElement>('#success'), events);
 
 // Инициализация счетчика корзины
 header.render({ count: basketModel.getCount() });
 
 // Обработчик открытия модального окна с просмотром товара
 events.on('card:select', (data: { product: IProduct }) => {
-  const preview = new CardPreview(document.createElement('div'), events);
+  const previewElement = cloneTemplate<HTMLElement>('#card-preview');
+  const preview = new CardPreview(previewElement, events);
   const inBasket = basketModel.contains(data.product.id);
-  const previewElement = preview.render({ ...data.product, inBasket });
-  modal.setContent(previewElement);
+  const renderedPreview = preview.render({ ...data.product, inBasket });
+  modal.setContent(renderedPreview);
   modal.open();
 });
 
@@ -99,31 +97,85 @@ events.on('basket:order', () => {
   const orderFormElement = orderForm.render(buyerData);
   modal.setContent(orderFormElement);
   modal.open();
+  // Валидируем форму при открытии
+  const errors = buyerModel.validate();
+  const formErrors: string[] = [];
+  if (errors.payment) formErrors.push(errors.payment);
+  if (errors.address) formErrors.push(errors.address);
+  orderForm.setErrors(formErrors);
+  orderForm.setSubmitButtonDisabled(formErrors.length > 0 || !buyerModel.getData().payment || !buyerModel.getData().address);
 });
 
 // Обработчик изменения данных в форме оформления заказа
 events.on('order:change', (data: Partial<IBuyer>) => {
   buyerModel.setData(data);
+
+  // Обновляем визуальное состояние кнопок оплаты, если изменилось поле payment
+  if (data.payment && (data.payment === 'card' || data.payment === 'cash')) {
+    orderForm.setPayment(data.payment);
+  }
+
+  // Валидируем только поля первой формы (payment и address)
+  const errors = buyerModel.validate();
+  const formErrors: string[] = [];
+  if (errors.payment) formErrors.push(errors.payment);
+  if (errors.address) formErrors.push(errors.address);
+  orderForm.setErrors(formErrors);
+  orderForm.setSubmitButtonDisabled(formErrors.length > 0 || !buyerModel.getData().payment || !buyerModel.getData().address);
 });
 
 // Обработчик отправки первой формы (переход ко второй форме)
-events.on('order:submit', (data: Partial<IBuyer>) => {
-  buyerModel.setData(data);
-  // Открываем вторую форму (ContactsForm)
-  const buyerData = buyerModel.getData();
-  const contactsFormElement = contactsForm.render(buyerData);
-  modal.setContent(contactsFormElement);
-  modal.open();
+events.on('order:submit', () => {
+  // Валидируем только поля первой формы
+  const errors = buyerModel.validate();
+  const formErrors: string[] = [];
+  if (errors.payment) formErrors.push(errors.payment);
+  if (errors.address) formErrors.push(errors.address);
+
+  if (formErrors.length === 0) {
+    // Открываем вторую форму (ContactsForm)
+    const buyerData = buyerModel.getData();
+    const contactsFormElement = contactsForm.render(buyerData);
+    modal.setContent(contactsFormElement);
+    modal.open();
+    // Валидируем вторую форму при открытии
+    const contactErrors = buyerModel.validate();
+    const contactFormErrors: string[] = [];
+    if (contactErrors.email) contactFormErrors.push(contactErrors.email);
+    if (contactErrors.phone) contactFormErrors.push(contactErrors.phone);
+    contactsForm.setErrors(contactFormErrors);
+    contactsForm.setSubmitButtonDisabled(contactFormErrors.length > 0 || !buyerModel.getData().email || !buyerModel.getData().phone);
+  } else {
+    orderForm.setErrors(formErrors);
+    orderForm.setSubmitButtonDisabled(true);
+  }
 });
 
 // Обработчик изменения данных в форме контактов
 events.on('contacts:change', (data: Partial<IBuyer>) => {
   buyerModel.setData(data);
+  // Валидируем только поля второй формы (email и phone)
+  const errors = buyerModel.validate();
+  const formErrors: string[] = [];
+  if (errors.email) formErrors.push(errors.email);
+  if (errors.phone) formErrors.push(errors.phone);
+  contactsForm.setErrors(formErrors);
+  contactsForm.setSubmitButtonDisabled(formErrors.length > 0 || !buyerModel.getData().email || !buyerModel.getData().phone);
 });
 
 // Обработчик отправки формы контактов (отправка заказа на сервер)
-events.on('contacts:submit', async (data: Partial<IBuyer>) => {
-  buyerModel.setData(data);
+events.on('contacts:submit', async () => {
+  // Валидируем все поля перед отправкой
+  const errors = buyerModel.validate();
+  const formErrors: string[] = [];
+  if (errors.email) formErrors.push(errors.email);
+  if (errors.phone) formErrors.push(errors.phone);
+
+  if (formErrors.length > 0) {
+    contactsForm.setErrors(formErrors);
+    contactsForm.setSubmitButtonDisabled(true);
+    return;
+  }
 
   // Формируем данные заказа
   const buyerData = buyerModel.getData();
@@ -169,7 +221,8 @@ events.on('success:close', () => {
 events.on('catalog:changed', (data: { products: IProduct[] }) => {
   // Создаем карточки для каждого товара
   const cards = data.products.map((product) => {
-    const card = new CardCatalog(document.createElement('button'), events);
+    const cardElement = cloneTemplate<HTMLButtonElement>('#card-catalog');
+    const card = new CardCatalog(cardElement, events);
     return card.render(product);
   });
 

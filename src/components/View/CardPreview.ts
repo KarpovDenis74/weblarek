@@ -1,36 +1,22 @@
-import { Card } from './Card';
 import { IProduct } from '../../types';
+import { ensureElement } from '../../utils/utils';
 import { IEvents } from '../base/Events';
-import { cloneTemplate } from '../../utils/utils';
+import { CardWithImage } from './CardWithImage';
 
-export class CardPreview extends Card {
-  protected _category: HTMLElement;
-  protected _title: HTMLElement;
-  protected _image: HTMLImageElement;
-  protected _price: HTMLElement;
+export class CardPreview extends CardWithImage {
   protected _text: HTMLElement;
   protected _button: HTMLButtonElement;
-  private _product?: IProduct;
-  private _inBasket: boolean = false;
+  private _buttonClickHandler?: () => void;
 
-  constructor(container: HTMLElement, events?: IEvents) {
-    const element = cloneTemplate<HTMLElement>('#card-preview');
-    super(element, events);
+  constructor(container: HTMLElement, events: IEvents) {
+    super(container, events);
 
-    this._category = element.querySelector('.card__category') as HTMLElement;
-    this._title = element.querySelector('.card__title') as HTMLElement;
-    this._image = element.querySelector('.card__image') as HTMLImageElement;
-    this._price = element.querySelector('.card__price') as HTMLElement;
-    this._text = element.querySelector('.card__text') as HTMLElement;
-    this._button = element.querySelector('.card__button') as HTMLButtonElement;
+    this._text = ensureElement<HTMLElement>('.card__text', container);
+    this._button = ensureElement<HTMLButtonElement>('.card__button', container);
 
     this._button.addEventListener('click', () => {
-      if (this._product) {
-        if (this._inBasket) {
-          this.events?.emit('card:remove', { product: this._product });
-        } else {
-          this.events?.emit('card:add', { product: this._product });
-        }
+      if (this._buttonClickHandler) {
+        this._buttonClickHandler();
       }
     });
   }
@@ -38,29 +24,36 @@ export class CardPreview extends Card {
   render(data?: Partial<IProduct & { inBasket: boolean }>): HTMLElement {
     if (!data) return this.container;
 
-    this._product = data as IProduct;
-    this._inBasket = data.inBasket || false;
+    const product = data as IProduct;
+    const inBasket = data.inBasket || false;
+
+    // Создаем колбэк с данными продукта
+    this._buttonClickHandler = () => {
+      if (inBasket) {
+        this.events.emit('card:remove', { product });
+      } else {
+        this.events.emit('card:add', { product });
+      }
+    };
 
     if (data.category) this.setCategory(data.category);
     if (data.title) this.setTitle(data.title);
     if (data.image) this.setImage(data.image, data.title);
     if (data.price !== undefined) this.setPrice(data.price);
-    if (data.description && this._text) {
+    if (data.description) {
       this._text.textContent = data.description;
     }
 
     // Управление кнопкой
-    if (this._button) {
-      if (data.price === null) {
-        this._button.disabled = true;
-        this._button.textContent = 'Недоступно';
+    if (data.price === null) {
+      this._button.disabled = true;
+      this._button.textContent = 'Недоступно';
+    } else {
+      this._button.disabled = false;
+      if (inBasket) {
+        this._button.textContent = 'Удалить из корзины';
       } else {
-        this._button.disabled = false;
-        if (this._inBasket) {
-          this._button.textContent = 'Удалить из корзины';
-        } else {
-          this._button.textContent = 'В корзину';
-        }
+        this._button.textContent = 'В корзину';
       }
     }
 

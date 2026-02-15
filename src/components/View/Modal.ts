@@ -1,5 +1,5 @@
 import { Component } from '../base/Component';
-import { cloneTemplate } from '../../utils/utils';
+import { ensureElement } from '../../utils/utils';
 
 export class Modal extends Component<void> {
   protected _content: HTMLElement;
@@ -7,8 +7,8 @@ export class Modal extends Component<void> {
 
   constructor(container: HTMLElement) {
     super(container);
-    this._content = container.querySelector('.modal__content') as HTMLElement;
-    this._closeButton = container.querySelector('.modal__close') as HTMLButtonElement;
+    this._content = ensureElement<HTMLElement>('.modal__content', container);
+    this._closeButton = ensureElement<HTMLButtonElement>('.modal__close', container);
 
     // Закрытие по клику на кнопку закрытия
     this._closeButton.addEventListener('click', () => {
@@ -29,9 +29,7 @@ export class Modal extends Component<void> {
   }
 
   setContent(content: HTMLElement): void {
-    if (this._content) {
-      this._content.replaceChildren(content);
-    }
+    this._content.replaceChildren(content);
   }
 
   open(): void {
@@ -45,16 +43,11 @@ export class Modal extends Component<void> {
     // Восстанавливаем скролл body при закрытии модального окна
     document.body.style.overflow = '';
     // Очищаем контент
-    if (this._content) {
-      this._content.innerHTML = '';
-    }
+    this._content.innerHTML = '';
   }
 
   containsBasket(): boolean {
-    if (this._content) {
-      return this._content.querySelector('.basket') !== null;
-    }
-    return false;
+    return this._content.querySelector('.basket') !== null;
   }
 
   render(): HTMLElement {
