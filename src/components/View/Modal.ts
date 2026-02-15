@@ -50,6 +50,13 @@ export class Modal extends Component<void> {
     }
   }
 
+  containsBasket(): boolean {
+    if (this._content) {
+      return this._content.querySelector('.basket') !== null;
+    }
+    return false;
+  }
+
   render(): HTMLElement {
     return this.container;
   }

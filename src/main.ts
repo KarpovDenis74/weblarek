@@ -14,14 +14,9 @@ import { OrderForm } from './components/View/OrderForm';
 import { Page } from './components/View/Page';
 import { Success } from './components/View/Success';
 import './scss/styles.scss';
+import { IBuyer, IOrderRequest, IProduct } from './types';
 import { API_URL } from './utils/constants';
-import { apiProducts } from './utils/data';
 
-
-const catalogModel = new Catalog();
-
-
-const currentProduct = catalogModel.getCurrentProduct();
 
 const basketModel = new BasketModel();
 
@@ -37,15 +32,22 @@ const shopApi = new ShopApi(api);
 
 // Инициализация компонентов
 const events = new EventEmitter();
+const catalogModel = new Catalog(events);
 const page = new Page(document.body);
 const modal = new Modal(document.querySelector('#modal-container') as HTMLElement);
 const header = new Header(document.querySelector('.header') as HTMLElement, events);
+
+// Создание компонентов представления (кроме карточек)
+const basketView = new BasketView(document.createElement('div'), events);
+const orderForm = new OrderForm(document.createElement('form'), events);
+const contactsForm = new ContactsForm(document.createElement('form'), events);
+const successView = new Success(document.createElement('div'), events);
 
 // Инициализация счетчика корзины
 header.render({ count: basketModel.getCount() });
 
 // Обработчик открытия модального окна с просмотром товара
-events.on('card:select', (data: { product: import('./types').IProduct }) => {
+events.on('card:select', (data: { product: IProduct }) => {
   const preview = new CardPreview(document.createElement('div'), events);
   const inBasket = basketModel.contains(data.product.id);
   const previewElement = preview.render({ ...data.product, inBasket });
@@ -60,25 +62,22 @@ function updateBasketCounter() {
 }
 
 // Обработчик добавления товара в корзину
-events.on('card:add', (data: { product: import('./types').IProduct }) => {
+events.on('card:add', (data: { product: IProduct }) => {
   basketModel.addItem(data.product);
   updateBasketCounter();
   modal.close();
 });
 
 // Обработчик удаления товара из корзины
-events.on('card:remove', (data: { product: import('./types').IProduct }) => {
+events.on('card:remove', (data: { product: IProduct }) => {
   basketModel.removeItem(data.product);
   updateBasketCounter();
 
   // Если модальное окно открыто с корзиной, обновляем её
-  const modalContainer = document.querySelector('#modal-container');
-  const modalContent = modalContainer?.querySelector('.basket');
-  if (modalContent) {
-    const basket = new BasketView(document.createElement('div'), events);
+  if (modal.containsBasket()) {
     const items = basketModel.getItems();
     const total = basketModel.getTotal();
-    const basketElement = basket.render({ items, total });
+    const basketElement = basketView.render({ items, total });
     modal.setContent(basketElement);
   } else {
     modal.close();
@@ -87,17 +86,15 @@ events.on('card:remove', (data: { product: import('./types').IProduct }) => {
 
 // Обработчик открытия модального окна с корзиной
 events.on('header:basket', () => {
-  const basket = new BasketView(document.createElement('div'), events);
   const items = basketModel.getItems();
   const total = basketModel.getTotal();
-  const basketElement = basket.render({ items, total });
+  const basketElement = basketView.render({ items, total });
   modal.setContent(basketElement);
   modal.open();
 });
 
 // Обработчик открытия формы оформления заказа
 events.on('basket:order', () => {
-  const orderForm = new OrderForm(document.createElement('form'), events);
   const buyerData = buyerModel.getData();
   const orderFormElement = orderForm.render(buyerData);
   modal.setContent(orderFormElement);
@@ -105,15 +102,14 @@ events.on('basket:order', () => {
 });
 
 // Обработчик изменения данных в форме оформления заказа
-events.on('order:change', (data: Partial<import('./types').IBuyer>) => {
+events.on('order:change', (data: Partial<IBuyer>) => {
   buyerModel.setData(data);
 });
 
 // Обработчик отправки первой формы (переход ко второй форме)
-events.on('order:submit', (data: Partial<import('./types').IBuyer>) => {
+events.on('order:submit', (data: Partial<IBuyer>) => {
   buyerModel.setData(data);
   // Открываем вторую форму (ContactsForm)
-  const contactsForm = new ContactsForm(document.createElement('form'), events);
   const buyerData = buyerModel.getData();
   const contactsFormElement = contactsForm.render(buyerData);
   modal.setContent(contactsFormElement);
@@ -121,19 +117,19 @@ events.on('order:submit', (data: Partial<import('./types').IBuyer>) => {
 });
 
 // Обработчик изменения данных в форме контактов
-events.on('contacts:change', (data: Partial<import('./types').IBuyer>) => {
+events.on('contacts:change', (data: Partial<IBuyer>) => {
   buyerModel.setData(data);
 });
 
 // Обработчик отправки формы контактов (отправка заказа на сервер)
-events.on('contacts:submit', async (data: Partial<import('./types').IBuyer>) => {
+events.on('contacts:submit', async (data: Partial<IBuyer>) => {
   buyerModel.setData(data);
 
   // Формируем данные заказа
   const buyerData = buyerModel.getData();
   const basketItems = basketModel.getItems();
   const total = basketModel.getTotal();
-  const orderData: import('./types').IOrderRequest = {
+  const orderData: IOrderRequest = {
     payment: buyerData.payment,
     email: buyerData.email,
     phone: buyerData.phone,
@@ -153,8 +149,8 @@ events.on('contacts:submit', async (data: Partial<import('./types').IBuyer>) => 
     updateBasketCounter();
 
     // Открываем модальное окно с сообщением об успехе
-    const success = new Success(document.createElement('div'), events);
-    const successElement = success.render({ total });
+    // Используем total из ответа сервера, так как там наиболее актуальные данные
+    const successElement = successView.render({ total: response.total });
     modal.setContent(successElement);
     modal.open();
   } catch (error) {
@@ -169,20 +165,23 @@ events.on('success:close', () => {
   modal.close();
 });
 
+// Обработчик изменения каталога товаров
+events.on('catalog:changed', (data: { products: IProduct[] }) => {
+  // Создаем карточки для каждого товара
+  const cards = data.products.map((product) => {
+    const card = new CardCatalog(document.createElement('button'), events);
+    return card.render(product);
+  });
+
+  // Отображаем карточки на странице
+  page.render(cards);
+  console.log('Товары отображены на странице');
+});
+
 shopApi.getProducts()
   .then((products) => {
     console.log('Товары получены с сервера:', products);
     catalogModel.setProducts(products);
-
-    // Создаем карточки для каждого товара
-    const cards = products.map((product) => {
-      const card = new CardCatalog(document.createElement('button'), events);
-      return card.render(product);
-    });
-
-    // Отображаем карточки на странице
-    page.render(cards);
-    console.log('Товары отображены на странице');
   })
   .catch((error) => {
     console.error('Ошибка при получении товаров с сервера:', error);
